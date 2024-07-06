@@ -12,5 +12,5 @@ export interface CloseHandler {
 
 export interface CreateRectanglesHandler {
   name: 'CREATE_RECTANGLES'
-  handler: (items: string[]) => void
+  handler: (items: string[], hexColor: string, textColor: string) => void
 }

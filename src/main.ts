@@ -3,7 +3,7 @@ import { CloseHandler, CreateRectanglesHandler } from './types';
 
 export default function () {
   // Function to create a new flow
-  async function createFlow(items: string[]) {
+  async function createFlow(items: string[], hexColor: string, textColor: string) {
     await figma.loadFontAsync({ family: "Inter", style: "Regular" });
 
     // Generate a unique name for each new flow
@@ -20,12 +20,13 @@ export default function () {
     parentFrame.paddingRight = 20;
     parentFrame.paddingTop = 20;
     parentFrame.paddingBottom = 20;
+    parentFrame.layoutAlign = 'CENTER'
 
     const nodes: Array<SceneNode> = [];
     for (let i = 0; i < items.length; i++) {
       const frame = figma.createFrame();
       frame.resize(120, 120); // Set a fixed size for the frame
-      frame.fills = [{ color: { b: 0, g: 0.5, r: 1 }, type: 'SOLID' }];
+      frame.fills = [{ color: figma.util.rgb((`#${hexColor}`)), type: 'SOLID' }];
       frame.cornerRadius = 8;
 
       // Create text node for each item
@@ -37,7 +38,7 @@ export default function () {
       text.textAutoResize = 'HEIGHT';
       text.textAlignHorizontal = 'CENTER';
       text.textAlignVertical = 'CENTER';
-      text.fills = [{ type: 'SOLID', color: { r: 0, g: 0, b: 0 } }];
+      text.fills = [{ type: 'SOLID', color: figma.util.rgb(`#${textColor}`)}];
 
       frame.appendChild(text); // Add text to frame
       parentFrame.appendChild(frame); // Add frame to parent frame
@@ -51,9 +52,9 @@ export default function () {
   }
 
   // Listen for the CREATE_RECTANGLES event
-  on<CreateRectanglesHandler>('CREATE_RECTANGLES', async function (items: string[]) {
+  on<CreateRectanglesHandler>('CREATE_RECTANGLES', async function (items: string[], hexColor: string, textColor: string) {
     try {
-      await createFlow(items);
+      await createFlow(items, hexColor, textColor);
     } catch (error) {
       figma.notify('An error occurred while creating the flow');
       console.error(error);

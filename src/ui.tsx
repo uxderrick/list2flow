@@ -5,7 +5,7 @@ import {
   Muted,
   render,
   Text,
-  TextboxNumeric,
+  TextboxColor,
   IconLayerFrame16,
   Textbox,
   VerticalSpace,
@@ -21,11 +21,13 @@ import { CloseHandler, CreateRectanglesHandler } from "./types";
 import styles from "./styles.css";
 
 function Plugin() {
-  const [itemValue, setItemValue] = useState("");
-  const [numberOfTextboxes, setNumberOfTextboxes] = useState(1);
+  // const [itemValue, setItemValue] = useState("");
+  // const [numberOfTextboxes, setNumberOfTextboxes] = useState(1);
   const [items, setItems] = useState<string[]>([""]);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const latestTextboxRef = useRef<HTMLInputElement | null>(null);
+  const [hexColor, setHexColor] = useState("000000");
+  const [textColor, setTextColor] = useState("FFFFFF");
 
   const addTextbox = () => {
     if (items.length < 8) {
@@ -39,6 +41,8 @@ function Plugin() {
 
   const clearAllTextboxes = () => {
     setItems([""]);
+    setHexColor("000000");
+    setTextColor("FFFFFF");
   };
 
   const handleItemChange = (
@@ -93,9 +97,14 @@ function Plugin() {
         return;
       }
       setErrorMessage(null);
-      emit<CreateRectanglesHandler>("CREATE_RECTANGLES", items);
+      emit<CreateRectanglesHandler>(
+        "CREATE_RECTANGLES",
+        items,
+        hexColor,
+        textColor
+      );
     },
-    [items]
+    [items, hexColor, textColor]
   );
 
   useEffect(() => {
@@ -108,9 +117,43 @@ function Plugin() {
     }
   }, []);
 
+  const handleHexColorInput = (hexColor: string) => {
+    setHexColor(hexColor);
+  };
+
+  const handleTextColorInput = (hexColor: string) => {
+    setTextColor(textColor);
+  };
+
   return (
     <div className={styles.pluginContainer}>
       <Container space="small">
+        <VerticalSpace space="large" />
+        <Text>
+          <Muted>Note Color</Muted>
+        </Text>
+        <VerticalSpace space="small" />
+        <TextboxColor
+          hexColor={hexColor}
+          hexColorPlaceholder="Color"
+          onHexColorValueInput={handleHexColorInput}
+          opacity="100"
+          opacityPlaceholder="%"
+          variant="border"
+        />
+        <VerticalSpace space="large" />
+        <Text>
+          <Muted>Text Color</Muted>
+        </Text>
+        <VerticalSpace space="small" />
+        <TextboxColor
+          hexColor={textColor}
+          hexColorPlaceholder="Color"
+          onHexColorValueInput={handleTextColorInput}
+          opacity="100"
+          opacityPlaceholder="%"
+          variant="border"
+        />
         <VerticalSpace space="large" />
         <Text>
           <Muted>Items</Muted>
