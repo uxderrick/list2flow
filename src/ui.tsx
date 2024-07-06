@@ -5,7 +5,7 @@ import {
   Muted,
   render,
   Text,
-  TextboxNumeric,
+  TextboxColor,
   IconLayerFrame16,
   Textbox,
   VerticalSpace,
@@ -15,34 +15,75 @@ import { Plus } from "@phosphor-icons/react";
 
 import { emit } from "@create-figma-plugin/utilities";
 import { h } from "preact";
-import { useCallback, useState, useEffect } from "preact/hooks";
+import { useCallback, useState, useEffect, useRef } from "preact/hooks";
 
 import { CloseHandler, CreateRectanglesHandler } from "./types";
 import styles from "./styles.css";
 
 function Plugin() {
-  const [count, setCount] = useState<number | null>(5);
-  const [countString, setCountString] = useState("5");
-  const [numberOfTextboxes, setNumberOfTextboxes] = useState(1);
+  // const [itemValue, setItemValue] = useState("");
+  // const [numberOfTextboxes, setNumberOfTextboxes] = useState(1);
+  const [items, setItems] = useState<string[]>([""]);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const latestTextboxRef = useRef<HTMLInputElement | null>(null);
+  const [hexColor, setHexColor] = useState("000000");
+  const [textColor, setTextColor] = useState("FFFFFF");
 
   const addTextbox = () => {
-    setNumberOfTextboxes(numberOfTextboxes + 1);
+    if (items.length < 8) {
+      setItems([...items, ""]);
+    }
   };
 
   const removeTextbox = () => {
-    setNumberOfTextboxes(numberOfTextboxes - 1);
+    setItems(items.slice(0, -1));
   };
 
-  const arrayOfTextboxes = Array.from({ length: numberOfTextboxes }, (_, i) => (
-    <div>
+  const clearAllTextboxes = () => {
+    setItems([""]);
+    setHexColor("000000");
+    setTextColor("FFFFFF");
+  };
+
+  const handleItemChange = (
+    index: number,
+    value: string,
+    isEnterPressed: boolean = false
+  ) => {
+    const newItems = [...items];
+    newItems[index] = value;
+    setItems(newItems);
+
+    if (isEnterPressed && index === items.length - 1 && items.length < 8) {
+      addTextbox();
+    }
+  };
+
+  useEffect(() => {
+    if (latestTextboxRef.current) {
+      latestTextboxRef.current.focus();
+    }
+  }, [items.length]); // This effect runs when the number of items changes
+
+  const arrayOfTextboxes = items.map((item, index) => (
+    <div key={index}>
       <Textbox
+        ref={index === items.length - 1 ? latestTextboxRef : null}
         icon={<IconLayerFrame16 />}
-        onValueInput={setCountString}
-        value={countString}
+        onValueInput={(value) => handleItemChange(index, value)}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            handleItemChange(index, event.currentTarget.value, true);
+          }
+        }}
+        placeholder="Enter item here..."
+        value={item}
         variant="border"
         style={{
           width: "100%",
         }}
+        maxLength={30}
       />
       <VerticalSpace space="extraSmall" />
     </div>
@@ -50,15 +91,21 @@ function Plugin() {
 
   const handleCreateRectanglesButtonClick = useCallback(
     function () {
-      if (count !== null) {
-        emit<CreateRectanglesHandler>("CREATE_RECTANGLES", count);
+      const hasEmptyItem = items.some((item) => item.trim() === "");
+      if (hasEmptyItem) {
+        setErrorMessage("All fields must be filled out.");
+        return;
       }
+      setErrorMessage(null);
+      emit<CreateRectanglesHandler>(
+        "CREATE_RECTANGLES",
+        items,
+        hexColor,
+        textColor
+      );
     },
-    [count]
+    [items, hexColor, textColor]
   );
-  const handleCloseButtonClick = useCallback(function () {
-    emit<CloseHandler>("CLOSE");
-  }, []);
 
   useEffect(() => {
     // Adjust the plugin height to fit the content
@@ -70,9 +117,43 @@ function Plugin() {
     }
   }, []);
 
+  const handleHexColorInput = (hexColor: string) => {
+    setHexColor(hexColor);
+  };
+
+  const handleTextColorInput = (hexColor: string) => {
+    setTextColor(textColor);
+  };
+
   return (
     <div className={styles.pluginContainer}>
       <Container space="small">
+        <VerticalSpace space="large" />
+        <Text>
+          <Muted>Note Color</Muted>
+        </Text>
+        <VerticalSpace space="small" />
+        <TextboxColor
+          hexColor={hexColor}
+          hexColorPlaceholder="Color"
+          onHexColorValueInput={handleHexColorInput}
+          opacity="100"
+          opacityPlaceholder="%"
+          variant="border"
+        />
+        <VerticalSpace space="large" />
+        <Text>
+          <Muted>Text Color</Muted>
+        </Text>
+        <VerticalSpace space="small" />
+        <TextboxColor
+          hexColor={textColor}
+          hexColorPlaceholder="Color"
+          onHexColorValueInput={handleTextColorInput}
+          opacity="100"
+          opacityPlaceholder="%"
+          variant="border"
+        />
         <VerticalSpace space="large" />
         <Text>
           <Muted>Items</Muted>
@@ -80,6 +161,20 @@ function Plugin() {
         <VerticalSpace space="small" />
         {/* text boxes */}
         {arrayOfTextboxes}
+        {errorMessage && (
+          <div>
+            <Text
+              style={{
+                color: "yellow",
+                marginTop: "8px",
+                textAlign: "left",
+              }}
+            >
+              {errorMessage}
+            </Text>
+            <VerticalSpace space="small" />
+          </div>
+        )}
         {/* <VerticalSpace space="small" /> */}
         <div
           style={{
@@ -89,23 +184,39 @@ function Plugin() {
             alignItems: "center",
           }}
         >
-          {numberOfTextboxes > 1 ? (
-            <Button
-              secondary
-              style={{
-                height: 28,
-                justifyContent: "center",
-                alignItems: "center",
-                display: "flex",
-                borderRadius: 2,
-                border: "1px solid #444",
-              }}
-              onClick={removeTextbox}
-            >
-              Remove row
-            </Button>
+          {arrayOfTextboxes.length > 1 ? (
+            <div>
+              <Button
+                secondary
+                style={{
+                  height: 28,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  display: "flex",
+                  borderRadius: 2,
+                  border: "1px solid #444",
+                }}
+                onClick={clearAllTextboxes}
+              >
+                Clear all
+              </Button>
+              <Button
+                secondary
+                style={{
+                  height: 28,
+                  justifyContent: "center",
+                  alignItems: "center",
+                  display: "flex",
+                  borderRadius: 2,
+                  border: "1px solid #444",
+                }}
+                onClick={removeTextbox}
+              >
+                Remove row
+              </Button>
+            </div>
           ) : null}
-          {numberOfTextboxes < 8 ? (
+          {arrayOfTextboxes.length < 9 ? (
             <Button
               secondary
               style={{
@@ -133,7 +244,11 @@ function Plugin() {
           }}
         >
           <Columns space="extraSmall">
-            <Button fullWidth onClick={handleCreateRectanglesButtonClick}>
+            <Button
+              fullWidth
+              onClick={handleCreateRectanglesButtonClick}
+              {...{ disabled: items.length < 2 }}
+            >
               Generate flow
             </Button>
           </Columns>
